@@ -1,7 +1,7 @@
-package com.example.examplemod.platform;
+package com.github.litermc.miss.platform;
 
-import com.example.examplemod.Constants;
-import com.example.examplemod.platform.services.IPlatformHelper;
+import com.github.litermc.miss.Constants;
+import com.github.litermc.miss.platform.services.IPlatformHelper;
 
 import java.util.ServiceLoader;
 

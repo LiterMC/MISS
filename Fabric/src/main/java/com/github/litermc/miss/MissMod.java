@@ -1,9 +1,9 @@
-package com.example.examplemod;
+package com.github.litermc.miss;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 
-public class ExampleMod implements ModInitializer {
+public class MissMod implements ModInitializer {
     
     @Override
     public void onInitialize() {

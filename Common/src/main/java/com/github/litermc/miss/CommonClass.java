@@ -1,6 +1,6 @@
-package com.example.examplemod;
+package com.github.litermc.miss;
 
-import com.example.examplemod.platform.Services;
+import com.github.litermc.miss.platform.Services;
 import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.food.FoodProperties;

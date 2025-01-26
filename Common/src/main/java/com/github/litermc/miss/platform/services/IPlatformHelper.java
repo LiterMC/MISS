@@ -1,4 +1,4 @@
-package com.example.examplemod.platform.services;
+package com.github.litermc.miss.platform.services;
 
 public interface IPlatformHelper {
 

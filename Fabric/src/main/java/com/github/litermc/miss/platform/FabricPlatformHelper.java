@@ -1,6 +1,6 @@
-package com.example.examplemod.platform;
+package com.github.litermc.miss.platform;
 
-import com.example.examplemod.platform.services.IPlatformHelper;
+import com.github.litermc.miss.platform.services.IPlatformHelper;
 import net.fabricmc.loader.api.FabricLoader;
 
 public class FabricPlatformHelper implements IPlatformHelper {
@@ -12,13 +12,11 @@ public class FabricPlatformHelper implements IPlatformHelper {
 
     @Override
     public boolean isModLoaded(String modId) {
-
         return FabricLoader.getInstance().isModLoaded(modId);
     }
 
     @Override
     public boolean isDevelopmentEnvironment() {
-
         return FabricLoader.getInstance().isDevelopmentEnvironment();
     }
 }

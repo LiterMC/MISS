@@ -1,12 +1,12 @@
 {
     "schemaVersion": 1,
-    "id": "miss",
+    "id": "${mod_id}",
     "version": "${version}",
   
-    "name": "MISS",
+    "name": "${mod_name}",
     "description": "A mod that forward minecraft connection through websocket.",
     "authors": [
-      "zyxkad"
+      "${mod_author}"
     ],
     "contact": {
       "homepage": "https://github.com/LiterMC/MISS",
@@ -19,16 +19,15 @@
     "environment": "*",
     "entrypoints": {
       "main": [
-        "com.github.litermc.miss.ExampleMod"
+        "com.github.litermc.miss.MissMod"
       ]
     },
     "mixins": [
-      "modid.mixins.json"
+      "miss.mixins.json"
     ],
   
     "depends": {
       "fabricloader": ">=0.14",
-      "fabric": "*",
       "minecraft": "1.19.x",
       "java": ">=17"
     }

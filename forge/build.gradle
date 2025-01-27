@@ -81,6 +81,13 @@ tasks.withType(JavaCompile) {
 
 processResources {
     from project(":common").sourceSets.main.resources
+
+    def buildProps = project.properties.clone()
+    buildProps.put("version", project.version)
+
+    filesMatching("META-INF/mods.toml") {
+        expand buildProps
+    }
 }
 
 

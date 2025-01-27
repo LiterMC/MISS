@@ -174,7 +174,7 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 			ctx.write(msg, promise);
 			return;
 		}
-		sendMessage(ctx, 0x2, input, promise);
+		this.sendMessage(ctx, 0x2, input, promise);
 	}
 
 	private void onMessage(ChannelHandlerContext ctx, WebsocketFrameDecoder frame) {
@@ -182,11 +182,24 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		switch (frame.getOpCode()) {
 			case 0x1 -> {
 				// Ignore text frame
-				sendMessage(ctx, 0x1, payload, null);
 			}
 			case 0x2 -> {
 				// Forward binary frame as game packet
 				ctx.fireChannelRead(payload);
+			}
+			case 0x8 -> {
+				// disconnect frame
+				this.sendMessage(ctx, 0x8, Unpooled.EMPTY_BUFFER, null);
+				ctx.flush();
+				ctx.channel().close();
+			}
+			case 0x9 -> {
+				// ping frame
+				this.sendMessage(ctx, 0xa, payload, null);
+				ctx.flush();
+			}
+			case 0xa -> {
+				// pong frame
 			}
 		}
 	}

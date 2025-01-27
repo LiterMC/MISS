@@ -50,6 +50,9 @@ public class WebsocketFrameDecoder {
 				this.payloadNeededLength = -1;
 			}
 			if (this.payloadNeededLength == -1) {
+				if (buf.readableBytes() == 0) {
+					return false;
+				}
 				short b = buf.getUnsignedByte(buf.readerIndex());
 				this.masking = (b & 0x80) == 0x80;
 				if (this.masking != this.requireMask) {

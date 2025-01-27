@@ -64,7 +64,6 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 			this.status = Status.HANDSHAKING;
 			byte[] buf = new byte[endIndex];
 			this.headerCache.getBytes(0, buf);
-			this.headerCache.discardReadBytes();
 			try {
 				this.request = Request.startReadRequest(buf);
 			} catch (DecodeException e) {
@@ -106,7 +105,7 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 			return;
 		}
 
-		if (!"upgrade".equalsIgnoreCase(this.request.getHeader("Connection")) || !"websocket".equalsIgnoreCase(this.request.getHeader("Upgrade"))) {
+		if (!this.request.getHeader("Connection").equalsIgnoreCase("upgrade") || !this.request.getHeader("Upgrade").equalsIgnoreCase("websocket")) {
 			ByteBuf reply = ctx.alloc().heapBuffer(256);
 			writeResponse(reply, 200, "Pong".getBytes(StandardCharsets.UTF_8));
 			ctx.write(reply);
@@ -146,6 +145,7 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 	}
 
 	private void onHTTPMessage(ChannelHandlerContext ctx, ByteBuf input) throws Exception {
+		System.out.println("enter onHTTPMessage " + this);
 		if (this.inputBuf == null) {
 			this.inputBuf = ctx.alloc().heapBuffer(256);
 		}
@@ -163,6 +163,7 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 			}
 			this.inputBuf.discardReadBytes();
 		} while (successed && this.inputBuf.readableBytes() > 0);
+		System.out.println("exit onHTTPMessage " + this);
 	}
 
 	@Override
@@ -206,6 +207,12 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		for (ByteBuf buf : encoder.encode(opCode, !this.isServer, payload)) {
 			ctx.write(buf);
 		}
+	}
+
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable e) throws Exception {
+		e.printStackTrace();
+		super.exceptionCaught(ctx, e);
 	}
 
 	private static void writeResponse(ByteBuf buffer, int status, byte[] body) {

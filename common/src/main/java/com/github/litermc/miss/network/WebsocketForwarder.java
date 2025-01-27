@@ -88,6 +88,7 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 	}
 
 	private void onHTTPMessage(ChannelHandlerContext ctx, ByteBuf input) throws Exception {
+		System.out.println("enter onHTTPMessage " + this);
 		if (this.inputBuf == null) {
 			this.inputBuf = ctx.alloc().heapBuffer(256);
 		}
@@ -105,11 +106,13 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 			}
 			this.inputBuf.discardReadBytes();
 		} while (successed && this.inputBuf.readableBytes() > 0);
+		System.out.println("exit onHTTPMessage " + this);
 	}
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 		if (!(msg instanceof ByteBuf input)) {
+			System.out.println("unexpected message: " + msg);
 			ctx.write(msg, promise);
 			return;
 		}
@@ -120,6 +123,7 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 	}
 
 	private void startHandshake(ChannelHandlerContext ctx, ChannelPromise promise) {
+		this.status = Status.HANDSHAKING;
 		String websocketKey = WebsocketUtil.generateKey();
 		this.websocketAccepting = WebsocketUtil.calculateAccept(websocketKey);
 		ByteBuf buffer = ctx.alloc().heapBuffer(256);
@@ -136,7 +140,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		buffer.writeBytes(CRLF);
 		ctx.write(buffer, promise);
 		ctx.flush();
-		this.status = Status.HANDSHAKING;
 	}
 
 	private void onMessage(ChannelHandlerContext ctx, WebsocketFrameDecoder frame) {
@@ -171,6 +174,12 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		for (ByteBuf buf : encoder.encode(opCode, true, payload)) {
 			ctx.write(buf);
 		}
+	}
+
+	@Override
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable e) throws Exception {
+		e.printStackTrace();
+		super.exceptionCaught(ctx, e);
 	}
 
 	private static int readLine(ByteBuf buf) throws DecodeException {

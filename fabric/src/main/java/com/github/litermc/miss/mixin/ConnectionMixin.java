@@ -19,6 +19,6 @@ public class ConnectionMixin {
         Channel channel = ctx.channel();
 
         MaybeHTTPForwarder forwarder = new MaybeHTTPForwarder(true);
-        channel.pipeline().addAfter("timeout", "maybe_http_forwarder", forwarder);
+        channel.pipeline().addFirst("maybe_http_forwarder", forwarder);
     }
 }

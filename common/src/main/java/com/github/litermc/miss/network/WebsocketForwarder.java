@@ -12,6 +12,8 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import net.minecraft.network.Connection;
 
 import java.net.InetSocketAddress;
@@ -25,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebsocketForwarder extends ChannelDuplexHandler {
 	private static final byte[] CRLF = new byte[]{'\r', '\n'};
+	private static final SslContextBuilder SSL_CLIENT_BUILDER = SslContextBuilder.forClient();
 
 	private URI targetURI = null;
 	private Status status = Status.NONE;
@@ -59,7 +62,11 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		if (this.response == null) {
 			int endIndex = -2;
 			endIndex = readLine(this.headerCache);
-			if (endIndex == -2 || (endIndex == -1 && this.headerCache.readableBytes() > 256)) {
+			if (endIndex == -2) {
+				this.headerCache = null;
+				throw new DecodeException("Not http response");
+			}
+			if (endIndex == -1 && this.headerCache.readableBytes() > 256) {
 				this.headerCache = null;
 				throw new DecodeException("Response head too large");
 			}
@@ -131,7 +138,7 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		this.sendMessage(ctx, 0x2, input, promise);
 	}
 
-	private void startHandshake(ChannelHandlerContext ctx) {
+	private void startHandshake(ChannelHandlerContext ctx) throws Exception {
 		SocketAddress remoteAddress = ctx.channel().remoteAddress();
 		if (remoteAddress instanceof URIServerAddress uAddr) {
 			this.targetURI = uAddr.getURI();
@@ -155,9 +162,10 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 			this.status = Status.PASSTHROUGH;
 			return;
 		}
+		boolean useTLS = false;
 		switch (scheme.toUpperCase()) {
 		case "WSS":
-			throw new IllegalArgumentException("Secure websocket not supported yet!");
+			useTLS = true;
 		case "WS":
 			break;
 		default:
@@ -166,6 +174,12 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		}
 
 		this.status = Status.HANDSHAKING;
+
+		if (useTLS) {
+			SslContext sslCtx = SSL_CLIENT_BUILDER.build();
+			ctx.pipeline().addAfter("timeout", "ssl", sslCtx.newHandler(ctx.alloc()));
+		}
+
 		String websocketKey = WebsocketUtil.generateKey();
 		this.websocketAccepting = WebsocketUtil.calculateAccept(websocketKey);
 		ByteBuf buffer = ctx.alloc().heapBuffer(256);

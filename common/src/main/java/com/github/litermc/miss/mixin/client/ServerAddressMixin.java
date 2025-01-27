@@ -100,7 +100,7 @@ public class ServerAddressMixin implements URIServerAddress {
 		}
 		// Host only string will be parsed as path
 		String host = null;
-		int port = 25565;
+		int port = -1;
 		String path = uri.getRawPath();
 		if (uri.getHost() != null) {
 			host = uri.getHost();
@@ -113,6 +113,14 @@ public class ServerAddressMixin implements URIServerAddress {
 		}
 		if (host == null) {
 			return INVALID;
+		}
+		if (port == -1) {
+			String s = uri.getScheme();
+			port = s == null ? 25565 : switch (s.toUpperCase()) {
+			case "WS" -> 80;
+			case "WSS" -> 443;
+			default -> 25565;
+			};
 		}
 		ServerAddress addr = new ServerAddress(host, port);
 		((ServerAddressMixin)((Object)(addr))).uri = uri;

@@ -140,16 +140,13 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 
 	private void startHandshake(ChannelHandlerContext ctx) throws Exception {
 		SocketAddress remoteAddress = ctx.channel().remoteAddress();
-		if (remoteAddress instanceof URIServerAddress uAddr) {
+		ChannelHandler handler = ctx.pipeline().get("packet_handler");
+		if (handler instanceof URIServerAddress uAddr) {
+			this.targetURI = uAddr.getURI();
+		} else if (remoteAddress instanceof URIServerAddress uAddr) {
 			this.targetURI = uAddr.getURI();
 		} else if (remoteAddress instanceof InetSocketAddress inetAddr) {
 			if (inetAddr.getAddress() instanceof URIServerAddress uAddr) {
-				this.targetURI = uAddr.getURI();
-			}
-		}
-		if (this.targetURI == null) {
-			ChannelHandler handler = ctx.pipeline().get("packet_handler");
-			if (handler instanceof URIServerAddress uAddr) {
 				this.targetURI = uAddr.getURI();
 			}
 		}
@@ -191,7 +188,10 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		if (query != null && !query.isEmpty()) {
 			path += "?" + query;
 		}
+		URI hostPort = new URI(null, null, this.targetURI.getHost(), this.targetURI.getPort(), null, null, null);
 		buffer.writeCharSequence("GET " + path + " HTTP/1.1", StandardCharsets.US_ASCII);
+		buffer.writeBytes(CRLF);
+		buffer.writeCharSequence("Host: " + hostPort.toString().substring("//".length()), StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
 		buffer.writeCharSequence("Connection: upgrade", StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);

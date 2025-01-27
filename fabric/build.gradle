@@ -8,7 +8,7 @@ version = version
 group = group
 
 base {
-    archivesName = "${mod_name}-fabric-${minecraft_version}"
+    archivesName = "${mod_name}-fabric-${minecraft_version}${mod_artifact_suffix}"
 }
 
 dependencies {

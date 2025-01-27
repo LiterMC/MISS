@@ -10,7 +10,7 @@ version = version
 group = group
 
 base {
-    archivesName = "${mod_name}-forge-${minecraft_version}"
+    archivesName = "${mod_name}-forge-${minecraft_version}${mod_artifact_suffix}"
 }
 
 minecraft {

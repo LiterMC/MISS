@@ -14,19 +14,18 @@ import io.netty.channel.ChannelPromise;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 	private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
-	private final boolean isServer;
 	private Status status = Status.NONE;
 	private Request request = null;
 	private ByteBuf headerCache = null;
 	private ByteBuf inputBuf = null;
 	private WebsocketFrameDecoder frameDecoder = null;
 
-	public MaybeHTTPForwarder(boolean isServer) {
-		this.isServer = isServer;
+	public MaybeHTTPForwarder() {
 	}
 
 	@Override
@@ -145,7 +144,6 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 	}
 
 	private void onHTTPMessage(ChannelHandlerContext ctx, ByteBuf input) throws Exception {
-		System.out.println("enter onHTTPMessage " + this);
 		if (this.inputBuf == null) {
 			this.inputBuf = ctx.alloc().heapBuffer(256);
 		}
@@ -154,7 +152,7 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		do {
 			successed = false;
 			if (this.frameDecoder == null) {
-				this.frameDecoder = new WebsocketFrameDecoder(ctx.alloc().heapBuffer(2048), this.isServer);
+				this.frameDecoder = new WebsocketFrameDecoder(ctx.alloc().heapBuffer(2048), true);
 			}
 			if (this.frameDecoder.decode(this.inputBuf)) {
 				this.onMessage(ctx, this.frameDecoder);
@@ -163,16 +161,15 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 			}
 			this.inputBuf.discardReadBytes();
 		} while (successed && this.inputBuf.readableBytes() > 0);
-		System.out.println("exit onHTTPMessage " + this);
 	}
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		if (this.status != Status.HTTP || !(msg instanceof ByteBuf input)) {
+		if (this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
 			ctx.write(msg, promise);
 			return;
 		}
-		this.sendMessage(ctx, 0x2, input);
+		this.sendMessage(ctx, 0x2, input, promise);
 	}
 
 	private void onMessage(ChannelHandlerContext ctx, WebsocketFrameDecoder frame) {
@@ -203,9 +200,30 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 	}
 
 	public void sendMessage(ChannelHandlerContext ctx, int opCode, ByteBuf payload) {
+		this.sendMessage(ctx, opCode, payload, null);
+	}
+
+	public void sendMessage(ChannelHandlerContext ctx, int opCode, ByteBuf payload, ChannelPromise promise) {
 		WebsocketFrameEncoder encoder = new WebsocketFrameEncoder(ctx.alloc());
-		for (ByteBuf buf : encoder.encode(opCode, !this.isServer, payload)) {
-			ctx.write(buf);
+		List<ByteBuf> chunks = encoder.encode(opCode, false, payload);
+		if (promise == null) {
+			chunks.forEach(ctx::write);
+			return;
+		}
+		AtomicInteger promiseCount = new AtomicInteger(chunks.size());
+		for (ByteBuf buf : chunks) {
+			final ChannelPromise p = ctx.channel().newPromise();
+			p.addListener(future -> {
+				try {
+					p.sync();
+				} catch (Exception e) {
+					promise.tryFailure(e);
+				}
+				if (promiseCount.decrementAndGet() == 0) {
+					promise.trySuccess();
+				}
+			});
+			ctx.write(buf, p);
 		}
 	}
 

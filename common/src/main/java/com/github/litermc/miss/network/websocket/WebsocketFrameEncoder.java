@@ -4,7 +4,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
 import java.security.SecureRandom;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
 public class WebsocketFrameEncoder {
 	private static final SecureRandom RANDOM = new SecureRandom();
@@ -18,33 +19,17 @@ public class WebsocketFrameEncoder {
 		this.allocator = allocator;
 	}
 
-	public Iterable<ByteBuf> encode(int opCode, boolean doMask, ByteBuf payload) {
+	public List<ByteBuf> encode(int opCode, boolean doMask, ByteBuf payload) {
 		final int chunks = (payload.readableBytes() + MAX_PAYLOAD_SIZE - 1) / MAX_PAYLOAD_SIZE;
-		return new IterableIterator<ByteBuf>() {
-			private int i = 0;
-
-			@Override
-			public boolean hasNext() {
-				return this.i < chunks;
+		List<ByteBuf> list = new ArrayList<>(chunks);
+		for (int i = 0; i < chunks; i++) {
+			int o = i == 0 ? opCode : 0;
+			if (i + 1 == chunks) {
+				o |= 0x80;
 			}
-
-			@Override
-			public ByteBuf next() {
-				int o = this.i == 0 ? opCode : 0;
-				this.i++;
-				if (this.i == chunks) {
-					o |= 0x80;
-				}
-				return WebsocketFrameEncoder.this.encodeImpl(o, doMask, payload, Math.min(payload.readableBytes(), MAX_PAYLOAD_SIZE));
-			}
-		};
-	}
-
-	private static interface IterableIterator<T> extends Iterable<T>, Iterator<T> {
-		@Override
-		default Iterator<T> iterator() {
-			return this;
+			list.add(this.encodeImpl(o, doMask, payload, Math.min(payload.readableBytes(), MAX_PAYLOAD_SIZE)));
 		}
+		return list;
 	}
 
 	private ByteBuf encodeImpl(int opCode, boolean doMask, ByteBuf payload, int length) {

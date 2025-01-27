@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebsocketForwarder extends ChannelDuplexHandler {
 	private static final byte[] CRLF = new byte[]{'\r', '\n'};
@@ -88,7 +89,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 	}
 
 	private void onHTTPMessage(ChannelHandlerContext ctx, ByteBuf input) throws Exception {
-		System.out.println("enter onHTTPMessage " + this);
 		if (this.inputBuf == null) {
 			this.inputBuf = ctx.alloc().heapBuffer(256);
 		}
@@ -106,23 +106,21 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 			}
 			this.inputBuf.discardReadBytes();
 		} while (successed && this.inputBuf.readableBytes() > 0);
-		System.out.println("exit onHTTPMessage " + this);
 	}
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 		if (!(msg instanceof ByteBuf input)) {
-			System.out.println("unexpected message: " + msg);
 			ctx.write(msg, promise);
 			return;
 		}
 		if (this.status == Status.NONE) {
-			this.startHandshake(ctx, promise);
+			this.startHandshake(ctx);
 		}
-		this.sendMessage(ctx, 0x2, input);
+		this.sendMessage(ctx, 0x2, input, promise);
 	}
 
-	private void startHandshake(ChannelHandlerContext ctx, ChannelPromise promise) {
+	private void startHandshake(ChannelHandlerContext ctx) {
 		this.status = Status.HANDSHAKING;
 		String websocketKey = WebsocketUtil.generateKey();
 		this.websocketAccepting = WebsocketUtil.calculateAccept(websocketKey);
@@ -138,7 +136,7 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		buffer.writeCharSequence("Sec-WebSocket-Key: " + websocketKey, StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
 		buffer.writeBytes(CRLF);
-		ctx.write(buffer, promise);
+		ctx.write(buffer);
 		ctx.flush();
 	}
 
@@ -170,9 +168,30 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 	}
 
 	public void sendMessage(ChannelHandlerContext ctx, int opCode, ByteBuf payload) {
+		this.sendMessage(ctx, opCode, payload, null);
+	}
+
+	public void sendMessage(ChannelHandlerContext ctx, int opCode, ByteBuf payload, ChannelPromise promise) {
 		WebsocketFrameEncoder encoder = new WebsocketFrameEncoder(ctx.alloc());
-		for (ByteBuf buf : encoder.encode(opCode, true, payload)) {
-			ctx.write(buf);
+		List<ByteBuf> chunks = encoder.encode(opCode, true, payload);
+		if (promise == null) {
+			chunks.forEach(ctx::write);
+			return;
+		}
+		AtomicInteger promiseCount = new AtomicInteger(chunks.size());
+		for (ByteBuf buf : chunks) {
+			final ChannelPromise p = ctx.channel().newPromise();
+			p.addListener(future -> {
+				try {
+					p.sync();
+				} catch (Exception e) {
+					promise.tryFailure(e);
+				}
+				if (promiseCount.decrementAndGet() == 0) {
+					promise.trySuccess();
+				}
+			});
+			ctx.write(buf, p);
 		}
 	}
 

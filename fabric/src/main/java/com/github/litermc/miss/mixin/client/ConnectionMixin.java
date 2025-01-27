@@ -19,6 +19,6 @@ public class ConnectionMixin {
         Channel channel = ctx.channel();
 
         WebsocketForwarder forwarder = new WebsocketForwarder();
-        channel.pipeline().addFirst("websocket_forwarder", forwarder);
+        channel.pipeline().addAfter("timeout", "websocket_forwarder", forwarder);
     }
 }

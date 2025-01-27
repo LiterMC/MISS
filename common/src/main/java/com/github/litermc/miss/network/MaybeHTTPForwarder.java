@@ -3,6 +3,7 @@ package com.github.litermc.miss.network;
 import com.github.litermc.miss.network.http.DecodeException;
 import com.github.litermc.miss.network.http.Request;
 import com.github.litermc.miss.network.websocket.WebsocketFrameDecoder;
+import com.github.litermc.miss.network.websocket.WebsocketFrameEncoder;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -16,13 +17,15 @@ import java.util.Base64;
 import java.util.List;
 
 public class MaybeHTTPForwarder extends ChannelDuplexHandler {
+	private final boolean isServer;
 	private Status status = Status.NONE;
 	private ByteBuf headerCache = null;
 	private Request request = null;
 	private ByteBuf inputBuf = null;
 	private WebsocketFrameDecoder frameDecoder = null;
 
-	public MaybeHTTPForwarder() {
+	public MaybeHTTPForwarder(boolean isServer) {
+		this.isServer = isServer;
 	}
 
 	@Override
@@ -148,18 +151,18 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		do {
 			successed = false;
 			if (this.frameDecoder == null) {
-				this.frameDecoder = new WebsocketFrameDecoder(ctx.alloc().heapBuffer(2048));
+				this.frameDecoder = new WebsocketFrameDecoder(ctx.alloc().heapBuffer(2048), this.isServer);
 			}
-			if (this.inputBuf != null) {
+			if (this.inputBuf != null && this.inputBuf != input) {
 				this.inputBuf.writeBytes(input);
 				input = this.inputBuf;
 			}
 			if (this.frameDecoder.decode(input)) {
-				this.onFrame(ctx, this.frameDecoder);
+				this.onMessage(ctx, this.frameDecoder);
 				this.frameDecoder = null;
 				successed = true;
 			}
-			if (input.readableBytes() > 0 && this.inputBuf == null) {
+			if (this.inputBuf == null && input.readableBytes() > 0) {
 				this.inputBuf = input.copy();
 			}
 		} while (successed);
@@ -171,18 +174,30 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 			ctx.write(msg, promise);
 			return;
 		}
-		ctx.write(msg, promise);
+		sendMessage(ctx, 0x2, input, promise);
 	}
 
-	private void onFrame(ChannelHandlerContext ctx, WebsocketFrameDecoder frame) {
+	private void onMessage(ChannelHandlerContext ctx, WebsocketFrameDecoder frame) {
 		ByteBuf payload = frame.getPayload();
 		switch (frame.getOpCode()) {
 			case 0x1 -> {
 				// Ignore text frame
+				sendMessage(ctx, 0x1, payload, null);
 			}
 			case 0x2 -> {
 				// Forward binary frame as game packet
 				ctx.fireChannelRead(payload);
+			}
+		}
+	}
+
+	public void sendMessage(ChannelHandlerContext ctx, int opCode, ByteBuf payload, ChannelPromise promise) {
+		WebsocketFrameEncoder encoder = new WebsocketFrameEncoder(ctx.alloc());
+		for (ByteBuf buf : encoder.encode(opCode, !this.isServer, payload)) {
+			if (promise != null) {
+				ctx.write(buf, promise);
+			} else {
+				ctx.write(buf);
 			}
 		}
 	}

@@ -5,13 +5,16 @@ import io.netty.buffer.ByteBuf;
 public class WebsocketFrameDecoder {
 	private boolean finished = false;
 	private byte opCode = -1;
+	private boolean masking = false;
 	private int payloadNeededLength = -1;
-	private boolean maskReady = false;
+	private int maskIndex = -1;
 	private final byte[] mask = new byte[4];
 	private final ByteBuf payload;
+	private final boolean requireMask;
 
-	public WebsocketFrameDecoder(ByteBuf target) {
+	public WebsocketFrameDecoder(ByteBuf target, boolean requireMask) {
 		this.payload = target;
+		this.requireMask = requireMask;
 	}
 
 	public byte getOpCode() {
@@ -25,27 +28,34 @@ public class WebsocketFrameDecoder {
 	public boolean decode(ByteBuf buf) throws WebsocketDecodeException {
 		while (buf.readableBytes() > 0) {
 			if (this.opCode == -1) {
-				short b = buf.readUnsignedByte();
-				this.opCode = (byte)(b & 0x0f);
-				this.finished = (b & 0x80) == 0x80;
+				short code = buf.readUnsignedByte();
+				if ((code & 0x70) != 0) {
+					throw new WebsocketDecodeException("Unexpected use of reserved bits");
+				}
+				this.opCode = (byte)(code & 0x0f);
+				this.finished = (code & 0x80) == 0x80;
 				this.payloadNeededLength = -1;
 			} else if (this.payloadNeededLength == 0) {
 				if (this.finished) {
 					throw new IllegalStateException("Decode is already finished");
 				}
-				short b = buf.readUnsignedByte();
-				if ((b & 0x0f) != 0) {
+				short code = buf.readUnsignedByte();
+				if ((code & 0x70) != 0) {
+					throw new WebsocketDecodeException("Unexpected use of reserved bits");
+				}
+				if ((code & 0x0f) != 0) {
 					throw new WebsocketDecodeException("Unexpected non-continuous frame");
 				}
-				this.finished = (b & 0x80) == 0x80;
+				this.finished = (code & 0x80) == 0x80;
 				this.payloadNeededLength = -1;
 			}
 			if (this.payloadNeededLength == -1) {
 				short b = buf.getUnsignedByte(buf.readerIndex());
-				if ((b & 0x80) == 0) {
-					throw new WebsocketDecodeException("mask bit must be 1");
+				this.masking = (b & 0x80) == 0x80;
+				if (this.masking != this.requireMask) {
+					throw new WebsocketDecodeException("Wrong payload masking status, require " + this.requireMask);
 				}
-				this.maskReady = false;
+				this.maskIndex = -1;
 				int length = b & 0x7f;
 				if (length <= 0x7d) {
 					buf.readByte();
@@ -68,22 +78,24 @@ public class WebsocketFrameDecoder {
 					this.payloadNeededLength = (int)(leng);
 				}
 			}
-			if (!this.maskReady) {
+			if (this.masking && this.maskIndex == -1) {
 				if (buf.readableBytes() < 4) {
 					return false;
 				}
 				buf.readBytes(this.mask);
-				this.maskReady = true;
+				this.maskIndex = 0;
 			}
 			if (this.payloadNeededLength > 0) {
 				int readable = Math.min(buf.readableBytes(), this.payloadNeededLength);
 				for (int i = 0; i < readable; i++) {
-					this.payload.writeByte(buf.readByte() ^ this.mask[i & 0x3]);
+					this.payload.writeByte(buf.readByte() ^ this.mask[this.maskIndex++ & 0x3]);
 					this.payloadNeededLength--;
 				}
 			}
-			if (this.finished && this.payloadNeededLength == 0) {
-				return true;
+			if (this.payloadNeededLength == 0) {
+				if (this.finished) {
+					return true;
+				}
 			}
 		}
 		return false;

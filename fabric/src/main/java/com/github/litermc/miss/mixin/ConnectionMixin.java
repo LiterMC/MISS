@@ -19,7 +19,7 @@ public class ConnectionMixin {
         Channel channel = ctx.channel();
 
         Constants.LOG.info("New channel! " + channel);
-        MaybeHTTPForwarder forwarder = new MaybeHTTPForwarder();
+        MaybeHTTPForwarder forwarder = new MaybeHTTPForwarder(true);
         channel.pipeline().addBefore("splitter", "maybe_http_forwarder", forwarder);
     }
 }

@@ -123,7 +123,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		}
 		if (this.status == Status.NONE) {
 			this.startHandshake(ctx);
-			System.out.println("After handshake: " + this.status);
 			if (this.status == Status.PASSTHROUGH) {
 				ctx.write(msg, promise);
 				return;

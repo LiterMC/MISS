@@ -16,9 +16,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(ServerAddress.class)
 public class ServerAddressMixin implements URIServerAddress {
@@ -31,21 +30,19 @@ public class ServerAddressMixin implements URIServerAddress {
 	@Unique
 	private URI uri;
 
-	@ModifyArgs(method = "<init>(Ljava/lang/String;I)V", at = @At(value = "INVOKE", target = "Lcom/google/common/net/HostAndPort;fromParts(Ljava/lang/String;I)Lcom/google/common/net/HostAndPort;", remap = false))
-	private static void initHostAndPort(Args args) {
+	@ModifyArg(method = "<init>(Ljava/lang/String;I)V", at = @At(value = "INVOKE", target = "Lcom/google/common/net/HostAndPort;fromParts(Ljava/lang/String;I)Lcom/google/common/net/HostAndPort;", remap = false), index = 0)
+	private static String initHostAndPort(String host) {
 		URI u;
 		try {
-			u = new URI(args.<String>get(0));
+			u = new URI(host);
 		} catch (URISyntaxException e) {
 			e.printStackTrace();
-			return;
+			return host;
 		}
 		if (u.getHost() != null) {
-			args.set(0, u.getHost());
-			if (u.getPort() != -1) {
-				args.set(1, u.getPort());
-			}
+			host = u.getHost();
 		}
+		return host;
 	}
 
 	@Inject(method = "<init>(Ljava/lang/String;I)V", at = @At("RETURN"))
@@ -101,10 +98,23 @@ public class ServerAddressMixin implements URIServerAddress {
 				return INVALID;
 			}
 		}
-		if (uri.getHost() == null || uri.getPort() == -1) {
+		// Host only string will be parsed as path
+		String host = null;
+		int port = 25565;
+		String path = uri.getRawPath();
+		if (uri.getHost() != null) {
+			host = uri.getHost();
+			if (uri.getPort() != -1) {
+				port = uri.getPort();
+			}
+		} else if (path != null) {
+			host = path;
+			path = null;
+		}
+		if (host == null) {
 			return INVALID;
 		}
-		ServerAddress addr = new ServerAddress(uri.getHost(), uri.getPort());
+		ServerAddress addr = new ServerAddress(host, port);
 		((ServerAddressMixin)((Object)(addr))).uri = uri;
 		return addr;
 	}
@@ -113,11 +123,17 @@ public class ServerAddressMixin implements URIServerAddress {
 	public static boolean isValidAddress(String str) {
 		try {
 			URI u = new URI(str);
-			if (u.getHost() != null && u.getPort() != -1) {
+			if (u.getHost() != null || u.getRawPath() != null) {
 				return true;
 			}
 		} catch (URISyntaxException e) {
-			return false;
+			try {
+				HostAndPort addr = HostAndPort.fromString(str);
+				if (!addr.getHost().isEmpty()) {
+					return true;
+				}
+			} catch (IllegalArgumentException e2) {
+			}
 		}
 		return false;
 	}

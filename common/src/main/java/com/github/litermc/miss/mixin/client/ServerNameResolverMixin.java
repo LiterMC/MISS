@@ -25,7 +25,8 @@ public class ServerNameResolverMixin {
 		}
 		ResolvedServerAddress resolved = ret.get();
 		URI uri = ((URIServerAddress)((Object)(addr))).getURI();
-		URIInetSocketAddress uAddr = new URIInetSocketAddress(uri, resolved.asInetSocketAddress().getAddress());
+		InetSocketAddress iAddr = resolved.asInetSocketAddress();
+		URIInetSocketAddress uAddr = new URIInetSocketAddress(uri, iAddr.getAddress(), iAddr.getPort());
 		cir.setReturnValue(Optional.of(new ResolvedServerAddress() {
 			@Override
 			public String getHostName() {

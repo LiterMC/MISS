@@ -7,8 +7,8 @@ import java.net.URI;
 public class URIInetSocketAddress extends InetSocketAddress implements URIServerAddress {
 	private final URI uri;
 
-	public URIInetSocketAddress(URI uri, InetAddress ip) {
-		super(ip, uri.getPort());
+	public URIInetSocketAddress(URI uri, InetAddress ip, int port) {
+		super(ip, port);
 		this.uri = uri;
 	}
 

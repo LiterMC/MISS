@@ -87,9 +87,14 @@ public class WebsocketFrameDecoder {
 			}
 			if (this.payloadNeededLength > 0) {
 				int readable = Math.min(buf.readableBytes(), this.payloadNeededLength);
-				for (int i = 0; i < readable; i++) {
-					this.payload.writeByte(buf.readByte() ^ this.mask[this.maskIndex++ & 0x3]);
-					this.payloadNeededLength--;
+				if (this.masking) {
+					for (int i = 0; i < readable; i++) {
+						this.payload.writeByte(buf.readByte() ^ this.mask[this.maskIndex++ & 0x3]);
+						this.payloadNeededLength--;
+					}
+				} else {
+					this.payload.writeBytes(buf, readable);
+					this.payloadNeededLength -= readable;
 				}
 			}
 			if (this.payloadNeededLength == 0) {

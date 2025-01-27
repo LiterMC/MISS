@@ -1,7 +1,7 @@
-package com.github.litermc.miss.mixin;
+package com.github.litermc.miss.mixin.client;
 
 import com.github.litermc.miss.Constants;
-import com.github.litermc.miss.network.MaybeHTTPForwarder;
+import com.github.litermc.miss.network.WebsocketForwarder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
@@ -18,7 +18,7 @@ public class ConnectionMixin {
     private void init(ChannelHandlerContext ctx, CallbackInfo info) {
         Channel channel = ctx.channel();
 
-        MaybeHTTPForwarder forwarder = new MaybeHTTPForwarder(true);
-        channel.pipeline().addAfter("timeout", "maybe_http_forwarder", forwarder);
+        WebsocketForwarder forwarder = new WebsocketForwarder();
+        channel.pipeline().addAfter("timeout", "websocket_forwarder", forwarder);
     }
 }

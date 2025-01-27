@@ -3,24 +3,21 @@ package com.github.litermc.miss.network.http;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Request {
 	private final String method;
 	private final URI uri;
 	private final int major;
 	private final int minor;
-	private final Map<String, List<String>> header;
+	private final Header header;
 
 	private Request(String method, URI uri, int major, int minor) {
 		this.method = method;
 		this.uri = uri;
 		this.major = major;
 		this.minor = minor;
-		this.header = new HashMap<>();
+		this.header = new Header();
 	}
 
 	public String getMethod() {
@@ -35,16 +32,16 @@ public class Request {
 		return this.major >= major && this.minor >= minor;
 	}
 
+	public Header header() {
+		return this.header;
+	}
+
 	public String getHeader(String key) {
-		List<String> values = this.header.get(key.toUpperCase());
-		if (values == null || values.isEmpty()) {
-			return null;
-		}
-		return values.get(0);
+		return this.header.get(key);
 	}
 
 	public List<String> getHeaderValues(String key) {
-		return this.header.get(key.toUpperCase());
+		return this.header.getValues(key);
 	}
 
 	public static Request startReadRequest(byte[] buf) throws DecodeException {
@@ -98,30 +95,5 @@ public class Request {
 		}
 
 		return new Request(method, uri, major, minor);
-	}
-
-	public void parseHeader(byte[] buf) throws DecodeException {
-		int lastEnd = 0;
-		for (int i = 0; i < buf.length; i++) {
-			if (buf[i] == '\r' || buf[i] == '\n') {
-				this.parseHeaderLine(buf, lastEnd, i);
-				if (buf[i] == '\r' && i + 1 < buf.length && buf[i + 1] == '\n') {
-					i++;
-				}
-				lastEnd = i + 1;
-			}
-		}
-	}
-
-	private void parseHeaderLine(byte[] buf, int start, int end) throws DecodeException {
-		for (int i = start; i < end; i++) {
-			if (buf[i] == ':') {
-				String key = new String(buf, start, i - start).trim();
-				String value = new String(buf, i + 1, end - i - 1).trim();
-				this.header.computeIfAbsent(key.toUpperCase(), (k) -> new ArrayList<>()).add(value);
-				return;
-			}
-		}
-		throw new DecodeException("Invalid http request: invalid header");
 	}
 }

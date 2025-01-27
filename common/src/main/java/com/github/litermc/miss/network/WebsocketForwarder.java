@@ -9,9 +9,14 @@ import com.github.litermc.miss.network.websocket.WebsocketUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import net.minecraft.network.Connection;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
@@ -21,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class WebsocketForwarder extends ChannelDuplexHandler {
 	private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
+	private URI targetURI = null;
 	private Status status = Status.NONE;
 	private String websocketAccepting = null;
 	private Response response = null;
@@ -41,6 +47,7 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		case NONE -> ctx.fireChannelRead(input);
 		case HANDSHAKING -> this.onHandshakeMessage(ctx, input);
 		case WEBSOCKET -> this.onHTTPMessage(ctx, input);
+		case PASSTHROUGH -> ctx.fireChannelRead(msg);
 		}
 	}
 
@@ -110,22 +117,68 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 
 	@Override
 	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		if (!(msg instanceof ByteBuf input)) {
+		if (this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
 			ctx.write(msg, promise);
 			return;
 		}
 		if (this.status == Status.NONE) {
 			this.startHandshake(ctx);
+			System.out.println("After handshake: " + this.status);
+			if (this.status == Status.PASSTHROUGH) {
+				ctx.write(msg, promise);
+				return;
+			}
 		}
 		this.sendMessage(ctx, 0x2, input, promise);
 	}
 
 	private void startHandshake(ChannelHandlerContext ctx) {
+		SocketAddress remoteAddress = ctx.channel().remoteAddress();
+		if (remoteAddress instanceof URIServerAddress uAddr) {
+			this.targetURI = uAddr.getURI();
+		} else if (remoteAddress instanceof InetSocketAddress inetAddr) {
+			if (inetAddr.getAddress() instanceof URIServerAddress uAddr) {
+				this.targetURI = uAddr.getURI();
+			}
+		}
+		if (this.targetURI == null) {
+			ChannelHandler handler = ctx.pipeline().get("packet_handler");
+			if (handler instanceof URIServerAddress uAddr) {
+				this.targetURI = uAddr.getURI();
+			}
+		}
+		if (this.targetURI == null) {
+			this.status = Status.PASSTHROUGH;
+			return;
+		}
+		String scheme = this.targetURI.getScheme();
+		if (scheme == null) {
+			this.status = Status.PASSTHROUGH;
+			return;
+		}
+		switch (scheme.toUpperCase()) {
+		case "WSS":
+			throw new IllegalArgumentException("Secure websocket not supported yet!");
+		case "WS":
+			break;
+		default:
+			this.status = Status.PASSTHROUGH;
+			return;
+		}
+
 		this.status = Status.HANDSHAKING;
 		String websocketKey = WebsocketUtil.generateKey();
 		this.websocketAccepting = WebsocketUtil.calculateAccept(websocketKey);
 		ByteBuf buffer = ctx.alloc().heapBuffer(256);
-		buffer.writeCharSequence("GET / HTTP/1.1", StandardCharsets.US_ASCII);
+		String path = this.targetURI.getRawPath();
+		if (path == null || path.isEmpty()) {
+			path = "/";
+		}
+		String query = this.targetURI.getRawQuery();
+		if (query != null && !query.isEmpty()) {
+			path += "?" + query;
+		}
+		buffer.writeCharSequence("GET " + path + " HTTP/1.1", StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
 		buffer.writeCharSequence("Connection: upgrade", StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
@@ -259,6 +312,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 	}
 
 	private enum Status {
-		NONE, HANDSHAKING, WEBSOCKET;
+		NONE, HANDSHAKING, WEBSOCKET, PASSTHROUGH;
 	}
 }

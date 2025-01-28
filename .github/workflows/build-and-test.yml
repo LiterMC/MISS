@@ -60,7 +60,7 @@ jobs:
           ./gradlew build "-Dmod_artifact_suffix=-pr${{ github.event.number }}-$(git rev-parse --short ${{ github.sha }})"
           mkdir output
           cp fabric/build/libs/* output/
-          cp forge/build/libs/* output/
+          cp neoforge/build/libs/* output/
       - name: Upload Build Artifacts
         id: artifact
         uses: actions/upload-artifact@v4

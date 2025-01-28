@@ -5,6 +5,7 @@ import com.github.litermc.miss.network.http.Response;
 import com.github.litermc.miss.network.websocket.WebsocketFrameDecoder;
 import com.github.litermc.miss.network.websocket.WebsocketFrameEncoder;
 import com.github.litermc.miss.network.websocket.WebsocketUtil;
+import com.google.common.net.HostAndPort;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -175,18 +176,20 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		String websocketKey = WebsocketUtil.generateKey();
 		this.websocketAccepting = WebsocketUtil.calculateAccept(websocketKey);
 		ByteBuf buffer = ctx.alloc().heapBuffer(256);
-		String path = this.targetURI.getRawPath();
-		if (path == null || path.isEmpty()) {
-			path = "/";
+		URI pathURI;
+		try {
+			String path = this.targetURI.getRawPath();
+			if (path == null || path.isEmpty()) {
+				path = "/";
+			}
+			pathURI = new URI(null, null, null, -1, path, this.targetURI.getRawQuery(), null);
+		} catch (URISyntaxException e) {
+			throw new RuntimeException(e);
 		}
-		String query = this.targetURI.getRawQuery();
-		if (query != null && !query.isEmpty()) {
-			path += "?" + query;
-		}
-		URI hostPort = new URI(null, null, this.targetURI.getHost(), this.targetURI.getPort(), null, null, null);
-		buffer.writeCharSequence("GET " + path + " HTTP/1.1", StandardCharsets.US_ASCII);
+		HostAndPort hostPort = HostAndPort.fromParts(this.targetURI.getHost(), this.targetURI.getPort());
+		buffer.writeCharSequence("GET " + pathURI.toString() + " HTTP/1.1", StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
-		buffer.writeCharSequence("Host: " + hostPort.toString().substring("//".length()), StandardCharsets.US_ASCII);
+		buffer.writeCharSequence("Host: " + hostPort.toString(), StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
 		buffer.writeCharSequence("Connection: upgrade", StandardCharsets.US_ASCII);
 		buffer.writeBytes(CRLF);
@@ -254,12 +257,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 			});
 			ctx.write(buf, p);
 		}
-	}
-
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable e) throws Exception {
-		e.printStackTrace();
-		super.exceptionCaught(ctx, e);
 	}
 
 	private static int readLine(ByteBuf buf) throws DecodeException {

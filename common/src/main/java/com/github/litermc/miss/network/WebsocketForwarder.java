@@ -19,6 +19,7 @@ import net.minecraft.network.Connection;
 
 import java.net.SocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;

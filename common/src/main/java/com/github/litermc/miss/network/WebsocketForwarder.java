@@ -16,7 +16,6 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import net.minecraft.network.Connection;
 
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -145,10 +144,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 			this.targetURI = uAddr.getURI();
 		} else if (remoteAddress instanceof URIServerAddress uAddr) {
 			this.targetURI = uAddr.getURI();
-		} else if (remoteAddress instanceof InetSocketAddress inetAddr) {
-			if (inetAddr.getAddress() instanceof URIServerAddress uAddr) {
-				this.targetURI = uAddr.getURI();
-			}
 		}
 		if (this.targetURI == null) {
 			this.status = Status.PASSTHROUGH;

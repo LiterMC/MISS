@@ -7,6 +7,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.util.debugchart.LocalSampleLogger;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -34,8 +35,8 @@ public class ConnectionMixin implements URIServerAddress {
 		return this.uri;
 	}
 
-	@Inject(method = "connectToServer(Ljava/net/InetSocketAddress;Z)Lnet/minecraft/network/Connection;", at = @At("RETURN"))
-	private static void connectToServer(InetSocketAddress addr, boolean useNative, CallbackInfoReturnable<Connection> cir) {
+	@Inject(method = "connectToServer(Ljava/net/InetSocketAddress;ZLnet/minecraft/util/debugchart/LocalSampleLogger;)Lnet/minecraft/network/Connection;", at = @At("RETURN"))
+	private static void connectToServer(InetSocketAddress addr, boolean useNative, LocalSampleLogger logger, CallbackInfoReturnable<Connection> cir) {
 		if (!(addr instanceof URIServerAddress uAddr)) {
 			return;
 		}

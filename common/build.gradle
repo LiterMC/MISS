@@ -1,23 +1,34 @@
-plugins {
-	id 'java'
-	id 'org.spongepowered.gradle.vanilla' version '0.2.1-SNAPSHOT'
-	id 'maven-publish'
+/*
+VanillaGradle likes to push breaking changes without updating their version
+If this happens in the future, try update your gradle version on the project
+If a gradle update doesn't fix the issue, you can pin the VanillaGradle version to a specific version that was working before.
+You can find the versions here https://repo.spongepowered.org/#browse/browse:maven-snapshots:org%2Fspongepowered%2Fvanillagradle
+and you can pin them with the following code:
+
+buildscript {
+	dependencies.add 'classpath', 'org.spongepowered:vanillagradle:0.2.1-20240507.024226-82'
 }
 
-archivesBaseName = "${mod_name}-common-${minecraft_version}"
+plugins {
+	id 'org.spongepowered.gradle.vanilla' version '0.2.1-20240507.024226-82'
+}
+*/
+
+plugins {
+	id 'idea'
+	id 'java'
+	id 'maven-publish'
+	id 'org.spongepowered.gradle.vanilla'
+}
+
+base {
+	archivesName = "${mod_name}-common-${minecraft_version}"
+}
 
 minecraft {
 	version(minecraft_version)
-	runs {   
-		if (project.hasProperty('common_runs_enabled') ? project.findProperty('common_runs_enabled').toBoolean() : true) {
-		
-			server(project.hasProperty('common_server_run_name') ? project.findProperty('common_server_run_name') : 'vanilla_server') {
-				workingDirectory(this.file("run"))
-			}
-			client(project.hasProperty('common_client_run_name') ? project.findProperty('common_client_run_name') : 'vanilla_client') {
-				workingDirectory(this.file("run"))
-			}
-		}
+	if(file("src/main/resources/${mod_id}.accesswidener").exists()){
+		accessWideners(file("src/main/resources/${mod_id}.accesswidener"))
 	}
 }
 
@@ -26,25 +37,13 @@ dependencies {
 	implementation "com.google.code.findbugs:jsr305:3.0.1"
 }
 
-processResources {
-
-	def buildProps = project.properties.clone()
-
-	filesMatching(['pack.mcmeta']) {
-		expand buildProps
-	}
-}
-
 publishing {
 	publications {
 		mavenJava(MavenPublication) {
-			groupId project.group
-			artifactId project.archivesBaseName
-			version project.version
+			artifactId base.archivesName.get()
 			from components.java
 		}
 	}
-
 	repositories {
 		maven {
 			url "file://" + System.getenv("local_maven")

@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerAddress.class)
 public class ServerAddressMixin implements URIServerAddress {
@@ -79,41 +80,23 @@ public class ServerAddressMixin implements URIServerAddress {
 		return this.uri;
 	}
 
-	@Overwrite
-	public static ServerAddress parseString(String str) {
+	@Inject(method = "parseString(Ljava/lang/String;)Lnet/minecraft/client/multiplayer/resolver/ServerAddress;", at = @At("HEAD"), cancellable = true)
+	private static void parseString(String str, CallbackInfoReturnable<ServerAddress> cir) {
 		if (str == null) {
-			return INVALID;
+			return;
 		}
 		URI uri;
 		try {
 			uri = new URI(str);
 		} catch (URISyntaxException e) {
-			try {
-				HostAndPort addr = HostAndPort.fromString(str).withDefaultPort(25565);
-				if (addr.getHost().isEmpty()) {
-					return INVALID;
-				}
-				return new ServerAddress(addr.getHost(), addr.getPort());
-			} catch (IllegalArgumentException e2) {
-				return INVALID;
-			}
+			// Fall back to vanilla parser
+			return;
 		}
-		// Host only string will be parsed as path
-		String host = null;
-		int port = -1;
-		String path = uri.getRawPath();
-		if (uri.getHost() != null) {
-			host = uri.getHost();
-			if (uri.getPort() != -1) {
-				port = uri.getPort();
-			}
-		} else if (path != null) {
-			host = path;
-			path = null;
+		if (uri.getHost() == null) {
+			// Fall back to vanilla parser
+			return;
 		}
-		if (host == null) {
-			return INVALID;
-		}
+		int port = uri.getPort();
 		if (port == -1) {
 			String s = uri.getScheme();
 			port = s == null ? 25565 : switch (s.toUpperCase()) {
@@ -122,28 +105,29 @@ public class ServerAddressMixin implements URIServerAddress {
 			default -> 25565;
 			};
 		}
-		ServerAddress addr = new ServerAddress(host, port);
+		ServerAddress addr = new ServerAddress(uri.getHost(), port);
 		((ServerAddressMixin)((Object)(addr))).uri = uri;
-		return addr;
+		cir.setReturnValue(addr);
 	}
 
-	@Overwrite
-	public static boolean isValidAddress(String str) {
+	@Inject(method = "isValidAddress(Ljava/lang/String;)Z", at = @At("HEAD"), cancellable = true)
+	private static void isValidAddress(String str, CallbackInfoReturnable<Boolean> cir) {
 		try {
 			URI u = new URI(str);
-			if (u.getHost() != null || u.getRawPath() != null) {
-				return true;
+			if (u.getHost() != null) {
+				String s = u.getScheme();
+				boolean ok = s == null ? true : switch (s.toUpperCase()) {
+				case "WS", "WSS" -> true;
+				case "TCP", "UDP" -> true;
+				default -> false;
+				};
+				cir.setReturnValue(ok);
+				return;
 			}
 		} catch (URISyntaxException e) {
-			try {
-				HostAndPort addr = HostAndPort.fromString(str);
-				if (!addr.getHost().isEmpty()) {
-					return true;
-				}
-			} catch (IllegalArgumentException e2) {
-			}
+			// Fall back to vanilla parser
+			return;
 		}
-		return false;
 	}
 
 	@Overwrite

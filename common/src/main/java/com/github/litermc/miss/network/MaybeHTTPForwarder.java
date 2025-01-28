@@ -227,12 +227,6 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		}
 	}
 
-	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable e) throws Exception {
-		e.printStackTrace();
-		super.exceptionCaught(ctx, e);
-	}
-
 	private static void writeResponse(ByteBuf buffer, int status, byte[] body) {
 		buffer.writeCharSequence("HTTP/1.1", StandardCharsets.US_ASCII);
 		buffer.writeByte(' ');

@@ -25,6 +25,16 @@ public class WebsocketFrameDecoder {
 		return this.payload;
 	}
 
+	protected int getMaxPacketSize() {
+		return switch (this.opCode) {
+		case 0x1 -> 0xffff; // text frame
+		case 0x2 -> 0x200002; // binary frame
+		case 0x8 -> 0xfff; // disconnect frame
+		case 0x9, 0xa -> 0xfff; // ping/pong frame
+		default -> 0xffff;
+		};
+	}
+
 	public boolean decode(ByteBuf buf) throws WebsocketDecodeException {
 		while (buf.readableBytes() > 0) {
 			if (this.opCode == -1) {
@@ -79,6 +89,10 @@ public class WebsocketFrameDecoder {
 						throw new WebsocketDecodeException("Frame is too large");
 					}
 					this.payloadNeededLength = (int)(leng);
+				}
+				int maxSize = this.getMaxPacketSize();
+				if (this.payload.readableBytes() + this.payloadNeededLength > maxSize) {
+					throw new WebsocketDecodeException("Packet size too large, maximum " + maxSize);
 				}
 			}
 			if (this.masking && this.maskIndex == -1) {

@@ -19,11 +19,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ServerNameResolverMixin {
 	@Inject(method = "resolveAddress(Lnet/minecraft/client/multiplayer/resolver/ServerAddress;)Ljava/util/Optional;", at = @At("RETURN"), cancellable = true)
 	public void resolveAddress(ServerAddress addr, CallbackInfoReturnable<Optional<ResolvedServerAddress>> cir) {
-		Optional<ResolvedServerAddress> ret = cir.getReturnValue();
-		if (!ret.isPresent()) {
+		ResolvedServerAddress resolved = cir.getReturnValue().orElse(null);
+		if (resolved == null) {
 			return;
 		}
-		ResolvedServerAddress resolved = ret.get();
 		URI uri = ((URIServerAddress)((Object)(addr))).getURI();
 		InetSocketAddress iAddr = resolved.asInetSocketAddress();
 		URIInetSocketAddress uAddr = new URIInetSocketAddress(uri, iAddr.getAddress(), iAddr.getPort());

@@ -12,7 +12,7 @@
 		"sources": "https://github.com/LiterMC/MISS"
 	},
 	"license": "${license}",
-	"icon": "assets/modid/${mod_id}.png",
+	"icon": "${mod_id}.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
@@ -23,11 +23,8 @@
 		"${mod_id}.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.14",
+		"fabricloader": ">=${fabric_loader_version}",
 		"minecraft": "${minecraft_depend_version}",
-		"java": ">=17"
-	},
-	"suggests": {
-		"another-mod": "*"
+		"java": ">=${java_version}"
 	}
 }

@@ -4,6 +4,7 @@ loaderVersion = "${forge_loader_version_range}" #mandatory This is typically bum
 license = "${license}" # Review your options at https://choosealicense.com/.
 
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
+#clientSideOnly=true #optional
 [[mods]] #mandatory
 modId = "${mod_id}" #mandatory
 version = "${version}" #mandatory
@@ -18,7 +19,7 @@ description = '''${description}''' #mandatory (Supports multiline text)
 [[dependencies.${mod_id}]]
 modId = "forge" #mandatory
 mandatory = true #mandatory
-versionRange = "${forge_version_range}" #mandatory
+versionRange = "[${forge_version},)" #mandatory
 ordering = "NONE" # The order that this dependency should load in relation to your mod, required to be either 'BEFORE' or 'AFTER' if the dependency is not mandatory
 side = "BOTH" # Side this dependency is applied on - 'BOTH', 'CLIENT' or 'SERVER'
 

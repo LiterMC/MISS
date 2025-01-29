@@ -1,9 +1,10 @@
 package com.github.litermc.miss.mixin;
 
+import com.github.litermc.miss.client.network.WebsocketForwarder;
 import com.github.litermc.miss.network.MaybeHTTPForwarder;
 import com.github.litermc.miss.network.URIServerAddress;
-import com.github.litermc.miss.network.WebsocketForwarder;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
@@ -44,6 +45,14 @@ public class ConnectionMixin implements URIServerAddress {
 		((ConnectionMixin)((Object)(conn))).uri = uAddr.getURI();
 	}
 
+	@Inject(method = "connect(Ljava/net/InetSocketAddress;ZLnet/minecraft/network/Connection;)Lio/netty/channel/ChannelFuture;", at = @At("HEAD"))
+	private static void connect(InetSocketAddress addr, boolean useNative, Connection conn, CallbackInfoReturnable<ChannelFuture> info) {
+		if (!(addr instanceof URIServerAddress uAddr)) {
+			return;
+		}
+		((ConnectionMixin)((Object)(conn))).uri = uAddr.getURI();
+	}
+
 	@Inject(method = "channelActive(Lio/netty/channel/ChannelHandlerContext;)V", at = @At("RETURN"))
 	private void channelActive(ChannelHandlerContext ctx, CallbackInfo info) {
 		Channel channel = ctx.channel();
@@ -51,11 +60,13 @@ public class ConnectionMixin implements URIServerAddress {
 		switch (this.receiving) {
 			case CLIENTBOUND -> {
 				WebsocketForwarder forwarder = new WebsocketForwarder();
-				channel.pipeline().addAfter("timeout", "websocket_forwarder", forwarder);
+				channel.pipeline().addBefore("splitter", "client_http_decoder", forwarder.getDecoder());
+				channel.pipeline().addBefore("prepender", "client_http_encoder", forwarder.getEncoder());
 			}
 			case SERVERBOUND -> {
 				MaybeHTTPForwarder forwarder = new MaybeHTTPForwarder();
-				channel.pipeline().addAfter("timeout", "maybe_http_forwarder", forwarder);
+				channel.pipeline().addBefore("splitter", "server_http_decoder", forwarder.getDecoder());
+				channel.pipeline().addBefore("prepender", "server_http_encoder", forwarder.getEncoder());
 			}
 		}
 	}

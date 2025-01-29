@@ -1,11 +1,12 @@
 package com.github.litermc.miss.mixin.client;
 
+import com.github.litermc.miss.client.network.URIInetSocketAddress;
 import com.github.litermc.miss.network.URIServerAddress;
-import com.github.litermc.miss.network.URIInetSocketAddress;
 import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.multiplayer.resolver.ServerNameResolver;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Optional;
@@ -25,7 +26,7 @@ public class ServerNameResolverMixin {
 		}
 		URI uri = ((URIServerAddress)((Object)(addr))).getURI();
 		InetSocketAddress iAddr = resolved.asInetSocketAddress();
-		URIInetSocketAddress uAddr = new URIInetSocketAddress(uri, iAddr.getAddress(), iAddr.getPort());
+		URIInetSocketAddress uAddr = new URIInetSocketAddress(iAddr, uri);
 		cir.setReturnValue(Optional.of(new ResolvedServerAddress() {
 			@Override
 			public String getHostName() {

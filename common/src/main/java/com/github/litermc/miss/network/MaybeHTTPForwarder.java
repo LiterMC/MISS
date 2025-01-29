@@ -1,5 +1,6 @@
 package com.github.litermc.miss.network;
 
+import com.github.litermc.miss.Constants;
 import com.github.litermc.miss.network.http.DecodeException;
 import com.github.litermc.miss.network.http.Request;
 import com.github.litermc.miss.network.websocket.WebsocketFrameDecoder;
@@ -8,15 +9,16 @@ import com.github.litermc.miss.network.websocket.WebsocketUtil;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MaybeHTTPForwarder extends ChannelDuplexHandler {
+public class MaybeHTTPForwarder {
 	private static final byte[] CRLF = new byte[]{'\r', '\n'};
 
 	private Status status = Status.NONE;
@@ -26,24 +28,6 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 	private WebsocketFrameDecoder frameDecoder = null;
 
 	public MaybeHTTPForwarder() {
-	}
-
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		if (!(msg instanceof ByteBuf input)) {
-			ctx.fireChannelRead(msg);
-			return;
-		}
-		try {
-			switch (this.status) {
-			case NONE -> this.initConnection(ctx, input);
-			case HANDSHAKING -> this.onHandshakeMessage(ctx, input);
-			case HTTP -> this.onHTTPMessage(ctx, input);
-			case PASSTHROUGH -> ctx.fireChannelRead(input);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	private void initConnection(ChannelHandlerContext ctx, ByteBuf input) throws Exception {
@@ -61,6 +45,7 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		}
 		if (endIndex >= 0) {
 			this.status = Status.HANDSHAKING;
+			Constants.LOG.info("Switching to websocket handshaking state for {}", ctx.channel().remoteAddress());
 			byte[] buf = new byte[endIndex];
 			this.headerCache.getBytes(0, buf);
 			try {
@@ -163,15 +148,6 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 		} while (successed && this.inputBuf.readableBytes() > 0);
 	}
 
-	@Override
-	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		if (this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
-			ctx.write(msg, promise);
-			return;
-		}
-		this.sendMessage(ctx, 0x2, input, promise);
-	}
-
 	private void onMessage(ChannelHandlerContext ctx, WebsocketFrameDecoder frame) {
 		ByteBuf payload = frame.getPayload();
 		switch (frame.getOpCode()) {
@@ -224,6 +200,45 @@ public class MaybeHTTPForwarder extends ChannelDuplexHandler {
 				}
 			});
 			ctx.write(buf, p);
+		}
+	}
+
+	public Decoder getDecoder() {
+		return this.new Decoder();
+	}
+
+	public Encoder getEncoder() {
+		return this.new Encoder();
+	}
+
+	private class Decoder extends ChannelInboundHandlerAdapter {
+		@Override
+		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+			if (!(msg instanceof ByteBuf input)) {
+				ctx.fireChannelRead(msg);
+				return;
+			}
+			try {
+				switch (MaybeHTTPForwarder.this.status) {
+				case NONE -> MaybeHTTPForwarder.this.initConnection(ctx, input);
+				case HANDSHAKING -> MaybeHTTPForwarder.this.onHandshakeMessage(ctx, input);
+				case HTTP -> MaybeHTTPForwarder.this.onHTTPMessage(ctx, input);
+				case PASSTHROUGH -> ctx.fireChannelRead(input);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private class Encoder extends ChannelOutboundHandlerAdapter {
+		@Override
+		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+			if (MaybeHTTPForwarder.this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
+				ctx.write(msg, promise);
+				return;
+			}
+			MaybeHTTPForwarder.this.sendMessage(ctx, 0x2, input, promise);
 		}
 	}
 

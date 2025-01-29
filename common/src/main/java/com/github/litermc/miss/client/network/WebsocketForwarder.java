@@ -1,5 +1,7 @@
-package com.github.litermc.miss.network;
+package com.github.litermc.miss.client.network;
 
+import com.github.litermc.miss.Constants;
+import com.github.litermc.miss.network.URIServerAddress;
 import com.github.litermc.miss.network.http.DecodeException;
 import com.github.litermc.miss.network.http.Response;
 import com.github.litermc.miss.network.websocket.WebsocketFrameDecoder;
@@ -9,9 +11,10 @@ import com.google.common.net.HostAndPort;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -26,7 +29,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class WebsocketForwarder extends ChannelDuplexHandler {
+public class WebsocketForwarder {
 	private static final byte[] CRLF = new byte[]{'\r', '\n'};
 	private static final SslContextBuilder SSL_CLIENT_BUILDER = SslContextBuilder.forClient();
 
@@ -39,20 +42,6 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 	private WebsocketFrameDecoder frameDecoder = null;
 
 	public WebsocketForwarder() {
-	}
-
-	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-		if (!(msg instanceof ByteBuf input)) {
-			ctx.fireChannelRead(msg);
-			return;
-		}
-		switch (this.status) {
-		case NONE -> ctx.fireChannelRead(input);
-		case HANDSHAKING -> this.onHandshakeMessage(ctx, input);
-		case WEBSOCKET -> this.onHTTPMessage(ctx, input);
-		case PASSTHROUGH -> ctx.fireChannelRead(msg);
-		}
 	}
 
 	private void onHandshakeMessage(ChannelHandlerContext ctx, ByteBuf input) throws Exception {
@@ -123,20 +112,46 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 		} while (successed && this.inputBuf.readableBytes() > 0);
 	}
 
-	@Override
-	public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-		if (this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
-			ctx.write(msg, promise);
-			return;
+	public Decoder getDecoder() {
+		return this.new Decoder();
+	}
+
+	public Encoder getEncoder() {
+		return this.new Encoder();
+	}
+
+	private class Decoder extends ChannelInboundHandlerAdapter {
+		@Override
+		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+			if (!(msg instanceof ByteBuf input)) {
+				ctx.fireChannelRead(msg);
+				return;
+			}
+			switch (WebsocketForwarder.this.status) {
+			case NONE -> ctx.fireChannelRead(input);
+			case HANDSHAKING -> WebsocketForwarder.this.onHandshakeMessage(ctx, input);
+			case WEBSOCKET -> WebsocketForwarder.this.onHTTPMessage(ctx, input);
+			case PASSTHROUGH -> ctx.fireChannelRead(msg);
+			}
 		}
-		if (this.status == Status.NONE) {
-			this.startHandshake(ctx);
-			if (this.status == Status.PASSTHROUGH) {
+	}
+
+	private class Encoder extends ChannelOutboundHandlerAdapter {
+		@Override
+		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+			if (WebsocketForwarder.this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
 				ctx.write(msg, promise);
 				return;
 			}
+			if (WebsocketForwarder.this.status == Status.NONE) {
+				WebsocketForwarder.this.startHandshake(ctx);
+				if (WebsocketForwarder.this.status == Status.PASSTHROUGH) {
+					ctx.write(msg, promise);
+					return;
+				}
+			}
+			WebsocketForwarder.this.sendMessage(ctx, 0x2, input, promise);
 		}
-		this.sendMessage(ctx, 0x2, input, promise);
 	}
 
 	private void startHandshake(ChannelHandlerContext ctx) throws Exception {
@@ -167,6 +182,7 @@ public class WebsocketForwarder extends ChannelDuplexHandler {
 			return;
 		}
 
+		Constants.LOG.info("Switching to websocket handshake, secure = {}", useTLS);
 		this.status = Status.HANDSHAKING;
 
 		if (useTLS) {

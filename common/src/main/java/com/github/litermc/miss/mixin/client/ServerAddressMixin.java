@@ -1,8 +1,6 @@
 package com.github.litermc.miss.mixin.client;
 
-import com.github.litermc.miss.network.MaybeHTTPForwarder;
 import com.github.litermc.miss.network.URIServerAddress;
-import com.github.litermc.miss.network.WebsocketForwarder;
 import com.google.common.net.HostAndPort;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 

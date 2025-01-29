@@ -8,5 +8,7 @@ rm fabric/build/libs/* neoforge/build/libs/*
 ./gradlew --daemon build
 
 mkdir output
+echo "Copying files"
 cp fabric/build/libs/* output/
 cp neoforge/build/libs/* output/
+echo "File copied, exit code: " $?

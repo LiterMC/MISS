@@ -40,6 +40,7 @@ public class WebsocketForwarder {
 	private ByteBuf headerCache = null;
 	private ByteBuf inputBuf = null;
 	private WebsocketFrameDecoder frameDecoder = null;
+	private Connection connection = null;
 
 	public WebsocketForwarder() {
 	}
@@ -156,10 +157,9 @@ public class WebsocketForwarder {
 
 	private void startHandshake(ChannelHandlerContext ctx) throws Exception {
 		SocketAddress remoteAddress = ctx.channel().remoteAddress();
-		ChannelHandler handler = ctx.pipeline().get("packet_handler");
-		if (handler instanceof URIServerAddress uAddr) {
-			this.targetURI = uAddr.getURI();
-		} else if (remoteAddress instanceof URIServerAddress uAddr) {
+		this.connection = (Connection)(ctx.pipeline().get("packet_handler"));
+		this.targetURI = ((URIServerAddress)(this.connection)).getURI();
+		if (this.targetURI == null && remoteAddress instanceof URIServerAddress uAddr) {
 			this.targetURI = uAddr.getURI();
 		}
 		if (this.targetURI == null) {

@@ -2,7 +2,7 @@
 
 cd "$(dirname "$0")"
 
-rm fabric/build/libs/* neoforge/build/libs/*
+rm fabric/build/libs/* forge/build/libs/*
 # rm -rf output
 
 ./gradlew --daemon build

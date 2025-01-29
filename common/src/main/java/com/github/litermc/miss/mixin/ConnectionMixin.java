@@ -4,6 +4,7 @@ import com.github.litermc.miss.client.network.WebsocketForwarder;
 import com.github.litermc.miss.network.MaybeHTTPForwarder;
 import com.github.litermc.miss.network.URIServerAddress;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
@@ -40,6 +41,14 @@ public class ConnectionMixin implements URIServerAddress {
 			return;
 		}
 		Connection conn = cir.getReturnValue();
+		((ConnectionMixin)((Object)(conn))).uri = uAddr.getURI();
+	}
+
+	@Inject(method = "connect(Ljava/net/InetSocketAddress;ZLnet/minecraft/network/Connection;)Lio/netty/channel/ChannelFuture;", at = @At("HEAD"))
+	private static void connect(InetSocketAddress addr, boolean useNative, Connection conn, CallbackInfoReturnable<ChannelFuture> info) {
+		if (!(addr instanceof URIServerAddress uAddr)) {
+			return;
+		}
 		((ConnectionMixin)((Object)(conn))).uri = uAddr.getURI();
 	}
 

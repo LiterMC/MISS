@@ -1,7 +1,7 @@
 # MISS
 
 [![Modrinth Downloads](https://img.shields.io/modrinth/dt/miss?color=4&label=Downloads&logo=modrinth)](https://modrinth.com/mod/miss)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL-3.0-green.svg)](LICENSE)
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.19%2B-blue?logo=minecraft)
 
 MISS 是一个 Minecraft 模组，用于通过 WebSocket 转发 Minecraft 连接。这使得你可以通过 WebSocket 协议连接到 Minecraft 服务器，提供了一种新的网络传输方式。

@@ -23,13 +23,13 @@ MISS 是一个 Minecraft 模组，用于通过 WebSocket 转发 Minecraft 连接
 
 #### 服务端
 
-1. 从 [Modrinth] (https://modrinth.com/mod/miss/versions) 下载对应版本
+1. 从 [Modrinth](https://modrinth.com/mod/miss/versions) 下载对应版本
 2. 将文件放入服务端 `mods` 目录
 3. 重启 Minecraft 服务器
 
 #### 客户端
 
-1. 从 [Modrinth] (https://modrinth.com/mod/miss/versions) 下载对应版本
+1. 从 [Modrinth](https://modrinth.com/mod/miss/versions) 下载对应版本
 2. 将文件放入客户端 `mods` 目录
 3. 启动 Minecraft 客户端
 
@@ -46,7 +46,7 @@ server {
     ssl_certificate /path/to/fullchain.pem;
     ssl_certificate_key /path/to/privkey.pem;
 
-# 该 location 其实也可以使用不同的 path 转发到不同的服务器
+    # 该 location 其实也可以使用不同的 path 转发到不同的服务器
     location / {
         proxy_pass http://ip:25565; # 转发 Minecraft 服务器的地址（可以是域名或IP）
         proxy_http_version 1.1;

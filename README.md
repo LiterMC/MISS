@@ -1,6 +1,7 @@
 # MISS
 
 [![Modrinth Downloads](https://img.shields.io/modrinth/dt/miss?color=4&label=Downloads&logo=modrinth)](https://modrinth.com/mod/miss)
+[![GitHub](https://img.shields.io/badge/GitHub-Repo-blue?logo=github)](https://github.com/LiterMC/MISS/)
 [![License](https://img.shields.io/badge/License-GPL3.0-green.svg)](LICENSE)
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.19%2B-blue?logo=minecraft)
 

@@ -14,24 +14,24 @@ MISS 是一个 Minecraft 模组，用于通过 WebSocket 转发 Minecraft 连接
 
 ## 前置要求
 
-- Minecraft Java版 1.19+
+- Minecraft Java 版 1.19+
 - Nginx 1.18+ 
-- 有效域名与SSL证书
+- 有效域名与SSL证书 (可选)
 - Java 17+
 
 ## 模组安装
 
 #### 服务端
 
-1. 从[Modrinth](https://modrinth.com/mod/miss/versions)下载对应版本
-2. 将文件放入服务端`mods`目录
-3. 重启Minecraft服务器
+1. 从 [Modrinth] (https://modrinth.com/mod/miss/versions) 下载对应版本
+2. 将文件放入服务端 `mods` 目录
+3. 重启 Minecraft 服务器
 
 #### 客户端
 
-1. 从[Modrinth](https://modrinth.com/mod/miss/versions)下载对应版本
-2. 将文件放入客户端`mods`目录
-3. 启动Minecraft游戏
+1. 从 [Modrinth] (https://modrinth.com/mod/miss/versions) 下载对应版本
+2. 将文件放入客户端 `mods` 目录
+3. 启动 Minecraft 客户端
 
 ## Nginx配置
 
@@ -46,6 +46,7 @@ server {
     ssl_certificate /path/to/fullchain.pem;
     ssl_certificate_key /path/to/privkey.pem;
 
+# 该 location 其实也可以使用不同的 path 转发到不同的服务器
     location / {
         proxy_pass http://ip:25565; # 转发 Minecraft 服务器的地址（可以是域名或IP）
         proxy_http_version 1.1;
@@ -63,10 +64,10 @@ server {
 
 ## 如何连接服务器
 
-1. 安装客户端MOD后
+1. 安装客户端 MOD 后
 2. 启动游戏
 3. 添加服务器并在地址栏输入：
-   `wss://mc.example.com:443`
+   `wss://mc.example.com`
 4. 点击"加入服务器"按钮
 
 ## 注意事项

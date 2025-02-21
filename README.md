@@ -5,6 +5,68 @@
 [![License](https://img.shields.io/badge/License-GPL3.0-green.svg)](LICENSE)
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.19%2B-blue?logo=minecraft)
 
+MISS uses WebSocket to forward your Minecraft connection.
+
+## Features
+
+- Support Websocket protocol on both client and server
+- Use same port on the server to detect WebSocket connection
+
+## Reqirements
+
+- Minecraft JE 1.19+
+- Nginx 1.18+ (optional)
+- SSL certificate (optional)
+- Java 17+
+
+## Install
+
+#### Server side
+
+1. Download from [Modrinth](https://modrinth.com/mod/miss/versions)
+2. Put the mod into `mods` folder
+3. Restart Minecraft server
+
+#### Client side
+
+1. Download from [Modrinth](https://modrinth.com/mod/miss/versions)
+2. Put the mod into `mods` folder
+3. Restart Minecraft client
+
+## Nginx Configuration
+
+Example:
+```nginx
+server {
+    listen 443 ssl;
+    server_name mc.example.com;
+
+    ssl_certificate /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    # You also can forward different paths to different servers
+    location / {
+        proxy_pass http://ip_or_hostname:25565;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+## How to connect
+
+1. Input `wss://mc.example.com` to the `Server Address` bar
+2. Join the server
+
+---
+
+# MISS
+
 MISS 是一个 Minecraft 模组，用于通过 WebSocket 转发 Minecraft 连接。这使得你可以通过 WebSocket 协议连接到 Minecraft 服务器，提供了一种新的网络传输方式。
 
 ## 功能特性

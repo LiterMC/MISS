@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 rm fabric/build/libs/* neoforge/build/libs/*
 # rm -rf output
 
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 ./gradlew --daemon build
 
 mkdir output

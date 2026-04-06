@@ -130,7 +130,7 @@ public class WebsocketForwarder {
 			protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
 				WebsocketForwarder.this.sendMessage(ctx, 0x9, Unpooled.EMPTY_BUFFER);
 			}
-		}
+		};
 	}
 
 	private class Decoder extends ChannelInboundHandlerAdapter {

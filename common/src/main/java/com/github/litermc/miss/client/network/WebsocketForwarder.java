@@ -18,6 +18,8 @@ import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import net.minecraft.network.Connection;
 
 import java.net.SocketAddress;
@@ -119,6 +121,16 @@ public class WebsocketForwarder {
 
 	public Encoder getEncoder() {
 		return this.new Encoder();
+	}
+
+	public IdleStateHandler getPingPongHandler() {
+		int idleTimeout = 3;
+		return new IdleStateHandler(0, 0, idleTimeout) {
+			@Override
+			protected void channelIdle(ChannelHandlerContext ctx, IdleStateEvent evt) throws Exception {
+				WebsocketForwarder.this.sendMessage(ctx, 0x9, Unpooled.EMPTY_BUFFER);
+			}
+		}
 	}
 
 	private class Decoder extends ChannelInboundHandlerAdapter {

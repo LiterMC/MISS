@@ -215,7 +215,7 @@ public class MaybeHTTPForwarder {
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 			if (!(msg instanceof ByteBuf input)) {
-				ctx.fireChannelRead(msg);
+				super.channelRead(ctx, msg);
 				return;
 			}
 			try {
@@ -235,7 +235,7 @@ public class MaybeHTTPForwarder {
 		@Override
 		public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 			if (MaybeHTTPForwarder.this.status == Status.PASSTHROUGH || !(msg instanceof ByteBuf input)) {
-				ctx.write(msg, promise);
+				super.write(ctx, msg, promise);
 				return;
 			}
 			MaybeHTTPForwarder.this.sendMessage(ctx, 0x2, input, promise);
